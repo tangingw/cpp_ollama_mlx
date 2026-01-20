@@ -55,11 +55,20 @@ deps:
 	brew install cpp-httplib
 	@echo "Installing MLX from source..."
 	@if [ ! -d "mlx" ]; then \
+		echo "Cloning MLX repository..."; \
 		git clone https://github.com/ml-explore/mlx.git; \
-		cd mlx && mkdir -p build && cd build; \
-		cmake .. -DCMAKE_BUILD_TYPE=Release -DMLX_BUILD_METAL=ON; \
-		make -j8 && sudo make install; \
 	fi
+	@echo "Building and installing MLX..."
+	@cd mlx && \
+		mkdir -p build && \
+		cd build && \
+		cmake .. -DCMAKE_BUILD_TYPE=Release \
+		         -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
+		         -DMLX_BUILD_METAL=ON \
+		         -DMLX_BUILD_PYTHON_BINDINGS=OFF && \
+		make -j8 && \
+		sudo make install
+	@echo "MLX installed to /opt/homebrew"
 	@echo "Dependencies installed!"
 
 # Install the binary
@@ -118,4 +127,10 @@ help:
 	@echo "  make serve        # Run the server"
 	@echo "  make m4-optimized # Build with M4 optimizations"
 
-.PHONY: all clean deps install uninstall serve test debug m4-optimized help
+# Clean build artifacts and MLX source
+clean-all: clean
+	@echo "Cleaning MLX source directory..."
+	rm -rf mlx
+	@echo "All clean!"
+
+.PHONY: all clean deps install uninstall serve test debug m4-optimized help clean-all rebuild-mlx

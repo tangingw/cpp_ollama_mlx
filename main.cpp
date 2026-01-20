@@ -18,6 +18,9 @@ void signalHandler(int signum) {
     exit(signum);
 }
 
+// Forward declaration
+void interactivePrompt(std::shared_ptr<MLXModel> model, const std::string& model_name);
+
 void printUsage(const char* program_name) {
     std::cout << "Usage: " << program_name << " [options]\n\n"
               << "Options:\n"
