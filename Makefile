@@ -55,7 +55,20 @@ clean:
 
 # Install dependencies via Homebrew
 deps:
-	@echo "Installing dependencies..."
+	@echo "Checking for Xcode Command Line Tools..."
+	@if ! xcode-select -p &> /dev/null; then \
+		echo "Installing Xcode Command Line Tools..."; \
+		xcode-select --install; \
+		echo ""; \
+		echo "⚠️  IMPORTANT: Complete the Xcode installation popup, then run 'make deps' again"; \
+		exit 1; \
+	fi
+	@echo "✓ Xcode Command Line Tools found"
+	@echo ""
+	@echo "Accepting Xcode license (may require password)..."
+	@sudo xcodebuild -license accept 2>/dev/null || true
+	@echo ""
+	@echo "Installing Homebrew dependencies..."
 	@command -v brew >/dev/null 2>&1 || { echo "Homebrew not found. Please install it first."; exit 1; }
 	@echo "Installing build tools..."
 	brew install cmake
@@ -134,6 +147,9 @@ help:
 	@echo "  m4-optimized   - Build with M4-specific optimizations"
 	@echo "  help           - Show this help message"
 	@echo ""
+	@echo "Troubleshooting:"
+	@echo "  fix-xcode      - Fix Xcode/Metal compiler issues"
+	@echo ""
 	@echo "Usage examples:"
 	@echo "  make              # Build the project"
 	@echo "  make deps         # Install dependencies"
@@ -147,4 +163,4 @@ clean-all: clean
 	rm -rf mlx
 	@echo "All clean!"
 
-.PHONY: all clean deps install uninstall serve test debug m4-optimized help clean-all rebuild-mlx
+.PHONY: all clean deps install uninstall serve test debug m4-optimized help clean-all rebuild-mlx fix-xcode
