@@ -18,8 +18,115 @@ void signalHandler(int signum) {
     exit(signum);
 }
 
-// Forward declaration
-void interactivePrompt(std::shared_ptr<MLXModel> model, const std::string& model_name);
+// Interactive prompt implementation
+void interactivePrompt(std::shared_ptr<MLXModel> model, const std::string& model_name) {
+    std::cout << "\n╭─────────────────────────────────────────╮\n";
+    std::cout << "│  Interactive Chat Mode                  │\n";
+    std::cout << "│  Model: " << model_name << std::string(33 - model_name.length(), ' ') << "│\n";
+    std::cout << "╰─────────────────────────────────────────╯\n\n";
+    
+    std::cout << "Commands:\n";
+    std::cout << "  /bye or /exit  - Exit the chat\n";
+    std::cout << "  /clear         - Clear conversation history\n";
+    std::cout << "  /multiline     - Enter multiline mode (end with Ctrl+D)\n";
+    std::cout << "  /help          - Show this help\n\n";
+    
+    std::vector<std::string> conversation_history;
+    
+    while (true) {
+        std::cout << ">>> ";
+        std::string input;
+        std::getline(std::cin, input);
+        
+        // Check for EOF (Ctrl+D)
+        if (std::cin.eof()) {
+            std::cout << "\nGoodbye!\n";
+            break;
+        }
+        
+        // Trim whitespace
+        input.erase(0, input.find_first_not_of(" \t\n\r"));
+        input.erase(input.find_last_not_of(" \t\n\r") + 1);
+        
+        if (input.empty()) {
+            continue;
+        }
+        
+        // Handle commands
+        if (input == "/bye" || input == "/exit") {
+            std::cout << "\nGoodbye!\n";
+            break;
+        } else if (input == "/clear") {
+            conversation_history.clear();
+            std::cout << "Conversation history cleared.\n\n";
+            continue;
+        } else if (input == "/help") {
+            std::cout << "\nCommands:\n";
+            std::cout << "  /bye or /exit  - Exit the chat\n";
+            std::cout << "  /clear         - Clear conversation history\n";
+            std::cout << "  /multiline     - Enter multiline mode (end with Ctrl+D)\n";
+            std::cout << "  /help          - Show this help\n\n";
+            continue;
+        } else if (input == "/multiline") {
+            std::cout << "Enter multiline input (press Ctrl+D on a new line to finish):\n";
+            std::stringstream multiline;
+            std::string line;
+            while (std::getline(std::cin, line)) {
+                multiline << line << "\n";
+            }
+            std::cin.clear(); // Clear EOF state
+            input = multiline.str();
+            
+            if (input.empty()) {
+                continue;
+            }
+        }
+        
+        // Add user input to history
+        conversation_history.push_back("User: " + input);
+        
+        // Build context from conversation history
+        std::string prompt;
+        for (const auto& msg : conversation_history) {
+            prompt += msg + "\n";
+        }
+        prompt += "Assistant: ";
+        
+        // Generate response
+        GenerationConfig config;
+        config.max_tokens = 256;
+        config.temperature = 0.7f;
+        config.stop_sequences = {"\nUser:", "\n>>>"};
+        
+        std::cout << "\nA: ";
+        std::string response = model->generate(prompt, config);
+        
+        // Extract just the assistant's response (remove the prompt)
+        size_t assistant_start = response.find("Assistant: ");
+        if (assistant_start != std::string::npos) {
+            response = response.substr(assistant_start + 11); // Length of "Assistant: "
+        }
+        
+        // Clean up response
+        for (const auto& stop : config.stop_sequences) {
+            size_t pos = response.find(stop);
+            if (pos != std::string::npos) {
+                response = response.substr(0, pos);
+            }
+        }
+        
+        std::cout << response << "\n\n";
+        
+        // Add assistant response to history
+        conversation_history.push_back("Assistant: " + response);
+        
+        // Limit conversation history to last 10 exchanges
+        if (conversation_history.size() > 20) {
+            conversation_history.erase(conversation_history.begin(), 
+                                     conversation_history.begin() + 2);
+        }
+    }
+}
 
 void printUsage(const char* program_name) {
     std::cout << "Usage: " << program_name << " [options]\n\n"

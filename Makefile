@@ -18,12 +18,20 @@ INCLUDES = -I$(HTTPLIB_PATH)/include \
 # Check if MLX Python is installed and use it
 ifneq ($(MLX_PYTHON_PATH),)
     INCLUDES += -I$(MLX_PYTHON_PATH)/include
-    LIBS = -L$(MLX_PYTHON_PATH)/lib -lmlx -lmlxnn
+    # Check if mlxnn library exists
+    LIBS = -L$(MLX_PYTHON_PATH)/lib -lmlx
+    ifneq ($(wildcard $(MLX_PYTHON_PATH)/lib/libmlxnn.*),)
+        LIBS += -lmlxnn
+    endif
 else
     # Fallback to Homebrew installation
     MLX_PATH = /opt/homebrew/opt/mlx
     INCLUDES += -I$(MLX_PATH)/include
-    LIBS = -L$(MLX_PATH)/lib -lmlx -lmlxnn
+    # Check if mlxnn library exists
+    LIBS = -L$(MLX_PATH)/lib -lmlx
+    ifneq ($(wildcard $(MLX_PATH)/lib/libmlxnn.*),)
+        LIBS += -lmlxnn
+    endif
 endif
 
 # Source files
@@ -126,9 +134,14 @@ debug: clean $(TARGET)
 	@echo "Debug build complete!"
 
 # Optimized build for M4
-m4-optimized: CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -march=armv9-a+fp16+bf16+sve -mtune=apple-m4 -flto -ffast-math
+m4-optimized: CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -mcpu=apple-m4 -ffast-math
 m4-optimized: clean $(TARGET)
 	@echo "M4-optimized build complete!"
+
+# Maximum optimization (may have compatibility issues)
+m4-extreme: CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -march=armv8.6-a+fp16+bf16 -mtune=apple-m4 -ffast-math
+m4-extreme: clean $(TARGET)
+	@echo "M4-extreme build complete!"
 
 # Show help
 help:
@@ -148,7 +161,7 @@ help:
 	@echo "  help           - Show this help message"
 	@echo ""
 	@echo "Troubleshooting:"
-	@echo "  fix-xcode      - Fix Xcode/Metal compiler issues"
+	@echo "  check-libs     - Check which MLX libraries are available"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make              # Build the project"
@@ -157,10 +170,32 @@ help:
 	@echo "  make serve        # Run the server"
 	@echo "  make m4-optimized # Build with M4 optimizations"
 
+# Check which libraries are available
+check-libs:
+	@echo "Checking MLX installation..."
+	@echo ""
+	@echo "Python MLX path: $(MLX_PYTHON_PATH)"
+	@if [ -n "$(MLX_PYTHON_PATH)" ]; then \
+		echo "MLX Python libraries:"; \
+		ls -la $(MLX_PYTHON_PATH)/lib/ 2>/dev/null || echo "  No lib directory found"; \
+		echo ""; \
+	fi
+	@echo "Homebrew MLX path: /opt/homebrew/opt/mlx"
+	@if [ -d "/opt/homebrew/opt/mlx/lib" ]; then \
+		echo "Homebrew MLX libraries:"; \
+		ls -la /opt/homebrew/opt/mlx/lib/ 2>/dev/null; \
+		echo ""; \
+	else \
+		echo "  Homebrew MLX not found"; \
+		echo ""; \
+	fi
+	@echo "Libraries to link: $(LIBS)"
+	@echo "Include paths: $(INCLUDES)"
+
 # Clean build artifacts and MLX source
 clean-all: clean
 	@echo "Cleaning MLX source directory..."
 	rm -rf mlx
 	@echo "All clean!"
 
-.PHONY: all clean deps install uninstall serve test debug m4-optimized help clean-all rebuild-mlx fix-xcode
+.PHONY: all clean deps install uninstall serve test debug m4-optimized help clean-all check-libs
