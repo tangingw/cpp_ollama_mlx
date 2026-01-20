@@ -6,18 +6,25 @@ CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -march=armv8.5-a+fp16+bf16
 LDFLAGS = -framework Metal -framework MetalPerformanceShaders -framework Accelerate
 
 # Paths
-MLX_PATH = /opt/homebrew/opt/mlx
+MLX_PYTHON_PATH := $(shell python3 -c "import mlx; import os; print(os.path.dirname(mlx.__file__))" 2>/dev/null || echo "")
 HTTPLIB_PATH = /opt/homebrew/opt/cpp-httplib
 JSON_PATH = /opt/homebrew/opt/nlohmann-json
 
 # Include directories
-INCLUDES = -I$(MLX_PATH)/include \
-           -I$(HTTPLIB_PATH)/include \
+INCLUDES = -I$(HTTPLIB_PATH)/include \
            -I$(JSON_PATH)/include \
            -I.
 
-# Library directories and libraries
-LIBS = -L$(MLX_PATH)/lib -lmlx -lmlxnn
+# Check if MLX Python is installed and use it
+ifneq ($(MLX_PYTHON_PATH),)
+    INCLUDES += -I$(MLX_PYTHON_PATH)/include
+    LIBS = -L$(MLX_PYTHON_PATH)/lib -lmlx -lmlxnn
+else
+    # Fallback to Homebrew installation
+    MLX_PATH = /opt/homebrew/opt/mlx
+    INCLUDES += -I$(MLX_PATH)/include
+    LIBS = -L$(MLX_PATH)/lib -lmlx -lmlxnn
+endif
 
 # Source files
 SOURCES = main.cpp mlx_llm.cpp server.cpp
@@ -56,28 +63,27 @@ deps:
 	@echo "Installing libraries..."
 	brew install nlohmann-json
 	brew install cpp-httplib
-	@echo "Installing MLX from source..."
-	@if [ ! -d "mlx" ]; then \
-		echo "Cloning MLX repository..."; \
-		git clone https://github.com/ml-explore/mlx.git; \
-	fi
-	@echo "Building and installing MLX..."
-	@cd mlx && \
-		mkdir -p build && \
-		cd build && \
-		cmake .. -DCMAKE_BUILD_TYPE=Release \
-		         -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
-		         -DMLX_BUILD_METAL=ON \
-		         -DMLX_BUILD_PYTHON_BINDINGS=OFF && \
-		make -j8 && \
-		sudo make install
-	@echo "MLX installed to /opt/homebrew"
 	@echo ""
-	@echo "✓ All dependencies installed successfully!"
+	@echo "Installing MLX..."
+	@echo "Note: MLX is best installed via pip. Installing Python MLX package..."
+	pip3 install mlx
 	@echo ""
-	@echo "Next steps:"
-	@echo "  make              # Build the project"
-	@echo "  make m4-optimized # Build with M4 optimizations"
+	@echo "Note: For C++ MLX development, you have two options:"
+	@echo ""
+	@echo "Option 1 (Recommended): Use MLX Python bindings and FFI"
+	@echo "  - Already installed via pip"
+	@echo "  - Headers available in Python site-packages"
+	@echo ""
+	@echo "Option 2: Build MLX C++ from source manually"
+	@echo "  git clone https://github.com/ml-explore/mlx.git"
+	@echo "  cd mlx && mkdir -p build && cd build"
+	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/homebrew"
+	@echo "  make -j8 && sudo make install"
+	@echo ""
+	@echo "✓ Dependencies installed!"
+	@echo ""
+	@echo "If you want to use MLX C++ (Option 2), run the commands above manually."
+	@echo "Otherwise, you can proceed with building using MLX Python bindings."
 
 # Install the binary
 install: $(TARGET)
