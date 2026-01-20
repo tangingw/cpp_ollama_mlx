@@ -50,7 +50,10 @@ clean:
 deps:
 	@echo "Installing dependencies..."
 	@command -v brew >/dev/null 2>&1 || { echo "Homebrew not found. Please install it first."; exit 1; }
+	@echo "Installing build tools..."
+	brew install cmake
 	brew install llvm
+	@echo "Installing libraries..."
 	brew install nlohmann-json
 	brew install cpp-httplib
 	@echo "Installing MLX from source..."
@@ -69,7 +72,12 @@ deps:
 		make -j8 && \
 		sudo make install
 	@echo "MLX installed to /opt/homebrew"
-	@echo "Dependencies installed!"
+	@echo ""
+	@echo "✓ All dependencies installed successfully!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make              # Build the project"
+	@echo "  make m4-optimized # Build with M4 optimizations"
 
 # Install the binary
 install: $(TARGET)
